@@ -1,12 +1,11 @@
-export 'package:hand_landmarker/hand_landmarker_pigeon.dart';
-export 'hand.dart';
-
 import 'dart:typed_data';
 
 import 'package:hand_landmarker/hand.dart';
 import 'package:hand_landmarker/hand_landmarker_pigeon.dart';
 import 'package:jni/jni.dart';
 import 'hand_landmarker_bindings.dart';
+export 'package:hand_landmarker/hand_landmarker_pigeon.dart';
+export 'hand.dart';
 
 /// The main class for the Hand Landmarker plugin.
 class HandLandmarkerPlugin {
@@ -31,8 +30,8 @@ class HandLandmarkerPlugin {
   }
 
   /// Stream of hand landmark results from the native side.
-  /// Results are pushed asynchronously after [detectFromCameraImage] is called (native runs in LIVE_STREAM mode).
-  /// Listen to this stream to receive [HandLandmarkerEventResult] data instead of using the synchronous [detectFromCameraImage] return value.
+  /// Results are pushed asynchronously after [detectFromYuv] is called (native runs in LIVE_STREAM mode).
+  /// Listen to this stream to receive [HandLandmarkerEventResult] data instead of using the synchronous [detectFromYuv] return value.
   static Stream<HandLandmarkerEventResult> get resultStream =>
       handLandmarkerEventStream();
 
@@ -51,7 +50,7 @@ class HandLandmarkerPlugin {
   ///   sensorOrientation: _controller!.description.sensorOrientation,
   /// );
   /// ```
-  void detectFromCameraImage({
+  void detectFromYuv({
     required Uint8List yPlaneBytes,
     required Uint8List uPlaneBytes,
     required Uint8List vPlaneBytes,
@@ -79,6 +78,23 @@ class HandLandmarkerPlugin {
     yBuffer.release();
     uBuffer.release();
     vBuffer.release();
+  }
+
+  /// Detects hand landmarks from a NV21 byte array.
+  void detectFromNv21({
+    required Uint8List nv21Bytes,
+    required int width,
+    required int height,
+    required int sensorOrientation,
+  }) {
+    final nv21Buffer = JByteArray.from(nv21Bytes);
+    _landmarker.detectFromNv21VideoFrame(
+      nv21Buffer,
+      width,
+      height,
+      sensorOrientation,
+    );
+    nv21Buffer.release();
   }
 
   /// Releases the native landmarker resources.

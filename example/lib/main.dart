@@ -93,7 +93,7 @@ class _HandTrackerViewState extends State<HandTrackerView> {
 
     _isDetecting = true;
     try {
-      _plugin!.detectFromCameraImage(
+      _plugin!.detectFromYuv(
         yPlaneBytes: image.planes[0].bytes,
         uPlaneBytes: image.planes[1].bytes,
         vPlaneBytes: image.planes[2].bytes,
