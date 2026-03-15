@@ -1,36 +1,16 @@
-import 'dart:convert';
-import 'package:camera/camera.dart';
+export 'package:hand_landmarker/hand_landmarker_pigeon.dart';
+export 'hand.dart';
+
+import 'dart:typed_data';
+
+import 'package:hand_landmarker/hand.dart';
+import 'package:hand_landmarker/hand_landmarker_pigeon.dart';
 import 'package:jni/jni.dart';
-
-// This is the auto-generated file from jnigen.
 import 'hand_landmarker_bindings.dart';
-
-// --- Public Data Models ---
-/// A detected hand with its landmarks.
-class Hand {
-  /// A list of 21 landmarks for the detected hand.
-  final List<Landmark> landmarks;
-
-  Hand(this.landmarks);
-}
-
-/// A single landmark point with its 3D coordinates.
-class Landmark {
-  final double x;
-  final double y;
-  final double z;
-
-  Landmark(this.x, this.y, this.z);
-}
-
-enum HandLandmarkerDelegate { cpu, gpu }
 
 /// The main class for the Hand Landmarker plugin.
 class HandLandmarkerPlugin {
-  /// The underlying JNI-generated landmarker object.
   final MyHandLandmarker _landmarker;
-
-  /// Private constructor to force initialization via the `create` method.
   HandLandmarkerPlugin._(this._landmarker);
 
   /// Creates and initializes the Hand Landmarker.
@@ -41,70 +21,66 @@ class HandLandmarkerPlugin {
   }) {
     // Create the native MyHandLandmarker object.
     final contextObj = Jni.androidApplicationContext;
-
     final landmarker = MyHandLandmarker(contextObj);
-
-    // Initialize the native landmarker with the provided options.
     landmarker.initialize(
       numHands,
       minHandDetectionConfidence,
       delegate == HandLandmarkerDelegate.gpu,
     );
-
     return HandLandmarkerPlugin._(landmarker);
   }
 
-  /// Detects hand landmarks in a given [CameraImage].
-  List<Hand> detect(CameraImage image, int sensorOrientation) {
-    // Get the Y, U, and V planes from the CameraImage.
-    final yPlane = image.planes[0];
-    final uPlane = image.planes[1];
-    final vPlane = image.planes[2];
+  /// Stream of hand landmark results from the native side.
+  /// Results are pushed asynchronously after [detectFromCameraImage] is called (native runs in LIVE_STREAM mode).
+  /// Listen to this stream to receive [HandLandmarkerEventResult] data instead of using the synchronous [detectFromCameraImage] return value.
+  static Stream<HandLandmarkerEventResult> get resultStream =>
+      handLandmarkerEventStream();
 
-    // Create JNI-compatible ByteBuffers for each plane.
-    final yBuffer = JByteBuffer.fromList(yPlane.bytes);
-    final uBuffer = JByteBuffer.fromList(uPlane.bytes);
-    final vBuffer = JByteBuffer.fromList(vPlane.bytes);
-
-    // Call the new native method with all the required plane data.
-    final resultJString = _landmarker.detectFromYuv(
+  /// Detects hand landmarks from YUV planes.
+  /// To detect from a CameraImage, use this
+  /// ```dart
+  /// _plugin!.detect(
+  ///   yPlaneBytes: image.planes[0].bytes,
+  ///   uPlaneBytes: image.planes[1].bytes,
+  ///   vPlaneBytes: image.planes[2].bytes,
+  ///   yRowStride: image.planes[0].bytesPerRow,
+  ///   uvRowStride: image.planes[1].bytesPerRow,
+  ///   bytesPerPixel: image.planes[1].bytesPerPixel!,
+  ///   width: image.width,
+  ///   height: image.height,
+  ///   sensorOrientation: _controller!.description.sensorOrientation,
+  /// );
+  /// ```
+  void detectFromCameraImage({
+    required Uint8List yPlaneBytes,
+    required Uint8List uPlaneBytes,
+    required Uint8List vPlaneBytes,
+    required int yRowStride,
+    required int uvRowStride,
+    required int bytesPerPixel,
+    required int width,
+    required int height,
+    required int sensorOrientation,
+  }) {
+    final yBuffer = JByteBuffer.fromList(yPlaneBytes);
+    final uBuffer = JByteBuffer.fromList(uPlaneBytes);
+    final vBuffer = JByteBuffer.fromList(vPlaneBytes);
+    _landmarker.detectFromYuv(
       yBuffer,
       uBuffer,
       vBuffer,
-      image.width,
-      image.height,
-      yPlane.bytesPerRow,
-      uPlane.bytesPerRow,
-      uPlane.bytesPerPixel!,
+      width,
+      height,
+      yRowStride,
+      uvRowStride,
+      bytesPerPixel,
       sensorOrientation,
     );
-    final resultString = resultJString.toDartString();
-
-    // Release native resources as soon as possible.
     yBuffer.release();
     uBuffer.release();
     vBuffer.release();
-    resultJString.release();
-
-    if (resultString.isEmpty || resultString == "[]") {
-      return [];
-    }
-
-    // Parse the JSON result and map it to our clean data models.
-    final parsedResult = jsonDecode(resultString) as List<dynamic>;
-    final hands = parsedResult.map((handData) {
-      final landmarks = (handData as List<dynamic>).map((landmarkData) {
-        final data = landmarkData as Map<String, dynamic>;
-        return Landmark(data['x']!, data['y']!, data['z']!);
-      }).toList();
-      return Hand(landmarks);
-    }).toList();
-
-    return hands;
   }
 
   /// Releases the native landmarker resources.
-  void dispose() {
-    _landmarker.release();
-  }
+  void dispose() => _landmarker.release();
 }

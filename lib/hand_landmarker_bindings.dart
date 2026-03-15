@@ -111,14 +111,88 @@ class MyHandLandmarker extends jni$_.JObject {
         .check();
   }
 
+  static final _id_run = _class.instanceMethodId(
+    r'run',
+    r'(Lcom/google/mediapipe/tasks/vision/handlandmarker/HandLandmarkerResult;Lcom/google/mediapipe/framework/image/MPImage;)V',
+  );
+
+  static final _run = jni$_.ProtectedJniExtensions.lookup<
+          jni$_.NativeFunction<
+              jni$_.JThrowablePtr Function(
+                  jni$_.Pointer<jni$_.Void>,
+                  jni$_.JMethodIDPtr,
+                  jni$_.VarArgs<
+                      (
+                        jni$_.Pointer<jni$_.Void>,
+                        jni$_.Pointer<jni$_.Void>
+                      )>)>>('globalEnv_CallVoidMethod')
+      .asFunction<
+          jni$_.JThrowablePtr Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>)>();
+
+  /// from: `public fun run(result: com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult?, input: com.google.mediapipe.framework.image.MPImage?): kotlin.Unit`
+  void run(
+    jni$_.JObject? handLandmarkerResult,
+    jni$_.JObject? mPImage,
+  ) {
+    final _$handLandmarkerResult =
+        handLandmarkerResult?.reference ?? jni$_.jNullReference;
+    final _$mPImage = mPImage?.reference ?? jni$_.jNullReference;
+    _run(reference.pointer, _id_run as jni$_.JMethodIDPtr,
+            _$handLandmarkerResult.pointer, _$mPImage.pointer)
+        .check();
+  }
+
+  static final _id_detectFromNv21VideoFrame = _class.instanceMethodId(
+    r'detectFromNv21VideoFrame',
+    r'([BIII)V',
+  );
+
+  static final _detectFromNv21VideoFrame = jni$_.ProtectedJniExtensions.lookup<
+          jni$_.NativeFunction<
+              jni$_.JThrowablePtr Function(
+                  jni$_.Pointer<jni$_.Void>,
+                  jni$_.JMethodIDPtr,
+                  jni$_.VarArgs<
+                      (
+                        jni$_.Pointer<jni$_.Void>,
+                        jni$_.Int32,
+                        jni$_.Int32,
+                        jni$_.Int32
+                      )>)>>('globalEnv_CallVoidMethod')
+      .asFunction<
+          jni$_.JThrowablePtr Function(jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr, jni$_.Pointer<jni$_.Void>, int, int, int)>();
+
+  /// from: `public fun detectFromNv21VideoFrame(data: kotlin.ByteArray, width: kotlin.Int, height: kotlin.Int, rotation: kotlin.Int): kotlin.Unit`
+  void detectFromNv21VideoFrame(
+    jni$_.JByteArray bs,
+    int i,
+    int i1,
+    int i2,
+  ) {
+    final _$bs = bs.reference;
+    _detectFromNv21VideoFrame(
+            reference.pointer,
+            _id_detectFromNv21VideoFrame as jni$_.JMethodIDPtr,
+            _$bs.pointer,
+            i,
+            i1,
+            i2)
+        .check();
+  }
+
   static final _id_detectFromYuv = _class.instanceMethodId(
     r'detectFromYuv',
-    r'(Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;IIIIII)Ljava/lang/String;',
+    r'(Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;IIIIII)V',
   );
 
   static final _detectFromYuv = jni$_.ProtectedJniExtensions.lookup<
           jni$_.NativeFunction<
-              jni$_.JniResult Function(
+              jni$_.JThrowablePtr Function(
                   jni$_.Pointer<jni$_.Void>,
                   jni$_.JMethodIDPtr,
                   jni$_.VarArgs<
@@ -132,9 +206,9 @@ class MyHandLandmarker extends jni$_.JObject {
                         jni$_.Int32,
                         jni$_.Int32,
                         jni$_.Int32
-                      )>)>>('globalEnv_CallObjectMethod')
+                      )>)>>('globalEnv_CallVoidMethod')
       .asFunction<
-          jni$_.JniResult Function(
+          jni$_.JThrowablePtr Function(
               jni$_.Pointer<jni$_.Void>,
               jni$_.JMethodIDPtr,
               jni$_.Pointer<jni$_.Void>,
@@ -147,9 +221,8 @@ class MyHandLandmarker extends jni$_.JObject {
               int,
               int)>();
 
-  /// from: `public fun detectFromYuv(yBuffer: java.nio.ByteBuffer, uBuffer: java.nio.ByteBuffer, vBuffer: java.nio.ByteBuffer, width: kotlin.Int, height: kotlin.Int, yRowStride: kotlin.Int, uvRowStride: kotlin.Int, uvPixelStride: kotlin.Int, rotation: kotlin.Int): kotlin.String`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JString detectFromYuv(
+  /// from: `public fun detectFromYuv(yBuffer: java.nio.ByteBuffer, uBuffer: java.nio.ByteBuffer, vBuffer: java.nio.ByteBuffer, width: kotlin.Int, height: kotlin.Int, yRowStride: kotlin.Int, uvRowStride: kotlin.Int, uvPixelStride: kotlin.Int, rotation: kotlin.Int): kotlin.Unit`
+  void detectFromYuv(
     jni$_.JByteBuffer byteBuffer,
     jni$_.JByteBuffer byteBuffer1,
     jni$_.JByteBuffer byteBuffer2,
@@ -163,7 +236,7 @@ class MyHandLandmarker extends jni$_.JObject {
     final _$byteBuffer = byteBuffer.reference;
     final _$byteBuffer1 = byteBuffer1.reference;
     final _$byteBuffer2 = byteBuffer2.reference;
-    return _detectFromYuv(
+    _detectFromYuv(
             reference.pointer,
             _id_detectFromYuv as jni$_.JMethodIDPtr,
             _$byteBuffer.pointer,
@@ -175,7 +248,7 @@ class MyHandLandmarker extends jni$_.JObject {
             i3,
             i4,
             i5)
-        .object<jni$_.JString>(const jni$_.$JString$Type$());
+        .check();
   }
 }
 
@@ -199,7 +272,7 @@ final class $MyHandLandmarker$NullableType$
             );
   @jni$_.internal
   @core$_.override
-  jni$_.JType get superType => const jni$_.$JObject$Type$();
+  jni$_.JType get superType => const jni$_.$JObject$NullableType$();
 
   @jni$_.internal
   @core$_.override
@@ -236,7 +309,7 @@ final class $MyHandLandmarker$Type$ extends jni$_.JType<MyHandLandmarker> {
       );
   @jni$_.internal
   @core$_.override
-  jni$_.JType get superType => const jni$_.$JObject$Type$();
+  jni$_.JType get superType => const jni$_.$JObject$NullableType$();
 
   @jni$_.internal
   @core$_.override

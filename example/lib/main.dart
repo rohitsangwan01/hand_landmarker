@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// Import the plugin's main class.
 import 'package:hand_landmarker/hand_landmarker.dart';
 
 late List<CameraDescription> _cameras;
@@ -36,14 +35,11 @@ class HandTrackerView extends StatefulWidget {
 
 class _HandTrackerViewState extends State<HandTrackerView> {
   CameraController? _controller;
-  // The plugin instance that will handle all the heavy lifting.
   HandLandmarkerPlugin? _plugin;
-  // The results from the plugin will be stored in this list.
-  List<Hand> _landmarks = [];
-  // A flag to show a loading indicator while the camera and plugin are initializing.
+  HandLandmarkerEventResult? _latestResult;
   bool _isInitialized = false;
-  // A guard to prevent processing multiple frames at once.
   bool _isDetecting = false;
+  StreamSubscription<HandLandmarkerEventResult>? _resultSubscription;
 
   @override
   void initState() {
@@ -62,29 +58,32 @@ class _HandTrackerViewState extends State<HandTrackerView> {
       enableAudio: false,
     );
 
-    // Create an instance of our plugin with custom options.
     _plugin = HandLandmarkerPlugin.create(
       numHands: 2,
       minHandDetectionConfidence: 0.7,
       delegate: HandLandmarkerDelegate.gpu,
     );
 
+    _resultSubscription = HandLandmarkerPlugin.resultStream.listen((result) {
+      debugPrint('HandLandmarkerEventResult: $result');
+      if (mounted) {
+        setState(() => _latestResult = result);
+      }
+    });
+
     await _controller!.initialize();
     await _controller!.startImageStream(_processCameraImage);
 
     if (mounted) {
-      setState(() {
-        _isInitialized = true;
-      });
+      setState(() => _isInitialized = true);
     }
   }
 
   @override
   void dispose() {
-    // Stop the image stream and dispose of the controller.
+    _resultSubscription?.cancel();
     _controller?.stopImageStream();
     _controller?.dispose();
-    // Dispose of the plugin to release native resources.
     _plugin?.dispose();
     super.dispose();
   }
@@ -93,29 +92,27 @@ class _HandTrackerViewState extends State<HandTrackerView> {
     if (_isDetecting || !_isInitialized || _plugin == null) return;
 
     _isDetecting = true;
-
     try {
-      // The detect method is now synchronous (not async).
-      final hands = _plugin!.detect(
-        image,
-        _controller!.description.sensorOrientation,
+      _plugin!.detectFromCameraImage(
+        yPlaneBytes: image.planes[0].bytes,
+        uPlaneBytes: image.planes[1].bytes,
+        vPlaneBytes: image.planes[2].bytes,
+        yRowStride: image.planes[0].bytesPerRow,
+        uvRowStride: image.planes[1].bytesPerRow,
+        bytesPerPixel: image.planes[1].bytesPerPixel!,
+        width: image.width,
+        height: image.height,
+        sensorOrientation: _controller!.description.sensorOrientation,
       );
-      if (mounted) {
-        setState(() {
-          _landmarks = hands;
-        });
-      }
     } catch (e) {
       debugPrint('Error detecting landmarks: $e');
     } finally {
-      // Allow the next frame to be processed.
       _isDetecting = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Show a loading indicator while initializing.
     if (!_isInitialized) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -133,11 +130,9 @@ class _HandTrackerViewState extends State<HandTrackerView> {
             children: [
               CameraPreview(controller),
               CustomPaint(
-                // Tell the painter to fill the available space
                 size: Size.infinite,
                 painter: LandmarkPainter(
-                  hands: _landmarks,
-                  // Pass the camera's resolution explicitly
+                  result: _latestResult,
                   previewSize: previewSize,
                   lensDirection: controller.description.lensDirection,
                   sensorOrientation: controller.description.sensorOrientation,
@@ -151,22 +146,26 @@ class _HandTrackerViewState extends State<HandTrackerView> {
   }
 }
 
-/// A custom painter that renders the hand landmarks and connections.
+/// A custom painter that renders the hand landmarks and connections from [HandLandmarkerEventResult].
 class LandmarkPainter extends CustomPainter {
   LandmarkPainter({
-    required this.hands,
+    required this.result,
     required this.previewSize,
     required this.lensDirection,
     required this.sensorOrientation,
   });
 
-  final List<Hand> hands;
+  final HandLandmarkerEventResult? result;
   final Size previewSize;
   final CameraLensDirection lensDirection;
   final int sensorOrientation;
 
   @override
   void paint(Canvas canvas, Size size) {
+    List<List<HandLandmark>> hands =
+        result?.landmarks.map((e) => e.data).toList() ?? [];
+    if (hands.isEmpty) return;
+
     final scale = size.width / previewSize.height;
 
     final paint = Paint()
@@ -191,37 +190,36 @@ class LandmarkPainter extends CustomPainter {
 
     canvas.scale(scale);
 
-    // Assign logicalWidth to the sensor's width and logicalHeight to the sensor's height.
     final logicalWidth = previewSize.width;
     final logicalHeight = previewSize.height;
-
-    for (final hand in hands) {
-      for (final landmark in hand.landmarks) {
-        // Now dx is scaled by width, and dy is scaled by height.
+    for (var hand in hands) {
+      for (HandLandmark landmark in hand) {
         final dx = (landmark.x - 0.5) * logicalWidth;
         final dy = (landmark.y - 0.5) * logicalHeight;
         canvas.drawCircle(Offset(dx, dy), 8 / scale, paint);
       }
-      for (final connection in HandLandmarkConnections.connections) {
-        final start = hand.landmarks[connection[0]];
-        final end = hand.landmarks[connection[1]];
-        final startDx = (start.x - 0.5) * logicalWidth;
-        final startDy = (start.y - 0.5) * logicalHeight;
-        final endDx = (end.x - 0.5) * logicalWidth;
-        final endDy = (end.y - 0.5) * logicalHeight;
-        canvas.drawLine(
-          Offset(startDx, startDy),
-          Offset(endDx, endDy),
-          linePaint,
-        );
+      if (hand.length >= 21) {
+        for (List<int> connection in HandLandmarkConnections.connections) {
+          final start = hand[connection[0]];
+          final end = hand[connection[1]];
+          final startDx = (start.x - 0.5) * logicalWidth;
+          final startDy = (start.y - 0.5) * logicalHeight;
+          final endDx = (end.x - 0.5) * logicalWidth;
+          final endDy = (end.y - 0.5) * logicalHeight;
+          canvas.drawLine(
+            Offset(startDx, startDy),
+            Offset(endDx, endDy),
+            linePaint,
+          );
+        }
       }
     }
-
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant LandmarkPainter oldDelegate) =>
+      oldDelegate.result != result;
 }
 
 /// Helper class.
